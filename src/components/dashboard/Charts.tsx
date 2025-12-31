@@ -103,7 +103,11 @@ export default function Charts({ monthly, summary }: ChartsProps) {
                   paddingAngle={5}
                   startAngle={90}
                   endAngle={-270}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={(props) => {
+                    const name = props.name ?? '';
+                    const percent = props.percent ?? 0;
+                    return `${name}: ${(percent * 100).toFixed(0)}%`;
+                  }}
                   labelLine={false}
                 >
                   {pieData.map((entry, index) => (

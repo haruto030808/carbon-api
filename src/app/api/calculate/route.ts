@@ -1,10 +1,16 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: Request) {
   try {
+    // Supabaseクライアントの初期化
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const body = await request.json();
     const apiKey = request.headers.get('x-api-key');
 
@@ -18,8 +24,8 @@ export async function POST(request: Request) {
 
     // 2. APIキーから組織ID (org_id) を特定
     const encoder = new TextEncoder();
-    const data = encoder.encode(apiKey);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const keyData = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashedInputKey = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     const { data: keyRecord, error: keyError } = await supabase
@@ -33,13 +39,13 @@ export async function POST(request: Request) {
     }
 
     // 3. 排出係数 (co2_factor) を取得
-    const { data: factor, error: factorError } = await supabase
+    const { data: factorData, error: factorError } = await supabase
       .from('emission_factors')
       .select('co2_factor') // 新しいカラム名
       .eq('id', body.factor_id)
       .single();
 
-    if (factorError || !factor) {
+    if (factorError || !factorData) {
       return NextResponse.json({ error: 'Factor not found' }, { status: 404 });
     }
 
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
     // DBの数値型はJavaScriptでは正確に計算するため一旦Numberにするなどの配慮が必要ですが、
     // ここでは簡易的に計算します。
     const activityValue = Number(body.activity_value);
-    const co2Factor = Number(factor.co2_factor);
+    const co2Factor = Number(factorData.co2_factor);
     const co2Emissions = activityValue * co2Factor;
 
     // 5. データを保存

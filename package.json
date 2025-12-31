@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "npx @cloudflare/next-on-pages",
+    "deploy:cloudflare": "npm run build && npm run build:cloudflare && npx wrangler pages deploy .vercel/output/static --project-name=carbon-api-app",
     "start": "next start",
     "lint": "eslint"
   },
@@ -28,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^3.0.0"
   }
 }

@@ -1,12 +1,18 @@
 export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    // Supabaseクライアントの初期化
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const { searchParams } = new URL(request.url);
     const apiKey = request.headers.get('x-api-key');
 
@@ -25,8 +31,8 @@ export async function GET(request: Request) {
     if (!apiKey) return NextResponse.json({ error: 'APIキーが必要です' }, { status: 401 });
 
     const encoder = new TextEncoder();
-    const data = encoder.encode(apiKey);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const keyData = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashedInputKey = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     const { data: keyRecord } = await supabase
