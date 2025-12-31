@@ -71,7 +71,7 @@ export default function CarbonDashboard() {
     if (filterStart) params.append('start_date', filterStart);
     if (filterEnd) params.append('end_date', filterEnd);
     
-    params.append('page', pagination.page.toString());
+    params.append('page', (pagination?.page ?? 1).toString());
     params.append('sort_by', sortConfig.key);
     params.append('sort_order', sortConfig.order);
 
@@ -122,7 +122,7 @@ export default function CarbonDashboard() {
     }
   };
 
-  useEffect(() => { loadData(); }, [currentPage, pagination.page, sortConfig]);
+  useEffect(() => { loadData(); }, [currentPage, pagination?.page ?? 1, sortConfig]);
 
   // --- ロジック: カテゴリ選択時の連動 ---
   
@@ -154,7 +154,7 @@ export default function CarbonDashboard() {
   };
 
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.total_pages) {
+    if (newPage >= 1 && newPage <= (pagination?.total_pages ?? 1)) {
       setPagination(p => ({ ...p, page: newPage }));
     }
   };
