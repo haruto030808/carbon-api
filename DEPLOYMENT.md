@@ -12,7 +12,7 @@
    - **Project name**: `carbon-api-app`
    - **Production branch**: `main`
    - **Framework preset**: `Next.js`
-   - **Build command**: `npm run build && npm run build:cloudflare`
+   - **Build command**: `npm run build:cloudflare`（`@cloudflare/next-on-pages`が自動的に`npm run build`を実行します）
    - **Build output directory**: `.vercel/output/static`
    - **Root directory**: `/` (空白のまま)
    - **Node.js version**: `20`
