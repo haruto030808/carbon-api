@@ -78,35 +78,43 @@ export default function ActivityTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {activities.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                <td className="px-8 py-6 text-xs font-bold text-slate-400">
-                  {item.created_at ? item.created_at.substring(0, 10) : '-'}
-                </td>
-                <td className="px-8 py-6 text-sm font-black text-slate-900">
-                  {item.start_date.substring(0, 7)}
-                </td>
-                <td className="px-8 py-6 text-sm font-bold text-slate-700">
-                  {item.emission_factors?.name}
-                </td>
-                <td className="px-8 py-6 text-right font-black text-slate-900">
-                  {item.co2_emissions?.toFixed(1)} <span className="text-[10px] text-slate-500 font-bold ml-1">kg</span>
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <button 
-                    onClick={() => handleDelete(item.id)} 
-                    disabled={deletingId === item.id} 
-                    className="p-2 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    {deletingId === item.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+            {activities && activities.length > 0 ? (
+              activities.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                  <td className="px-8 py-6 text-xs font-bold text-slate-400">
+                    {item.created_at ? item.created_at.substring(0, 10) : '-'}
+                  </td>
+                  <td className="px-8 py-6 text-sm font-black text-slate-900">
+                    {item.start_date.substring(0, 7)}
+                  </td>
+                  <td className="px-8 py-6 text-sm font-bold text-slate-700">
+                    {item.emission_factors?.name}
+                  </td>
+                  <td className="px-8 py-6 text-right font-black text-slate-900">
+                    {item.co2_emissions?.toFixed(1)} <span className="text-[10px] text-slate-500 font-bold ml-1">kg</span>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button 
+                      onClick={() => handleDelete(item.id)} 
+                      disabled={deletingId === item.id} 
+                      className="p-2 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      {deletingId === item.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-8 py-12 text-center">
+                  <p className="text-sm font-bold text-slate-400">No activities found</p>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
         

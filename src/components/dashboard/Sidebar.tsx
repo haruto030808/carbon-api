@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Leaf, LogOut, LayoutDashboard, Settings, Activity } from 'lucide-react';
+import { Leaf, LogOut, LayoutDashboard, Settings, Activity, Menu, X } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 
@@ -20,14 +20,24 @@ interface SidebarProps {
 export default function Sidebar({ currentPage, setCurrentPage, navItems }: SidebarProps) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   
   useEffect(() => { 
     supabase.auth.getUser().then(({ data }) => setUser(data.user)); 
   }, []);
 
-  return (
-    <div className="w-64 bg-white border-r border-slate-100 min-h-screen p-6 flex flex-col fixed left-0 top-0 h-full z-10 hidden md:flex">
+  const handleNavClick = (item: NavItem) => {
+    if (item.id === 'docs') {
+      router.push('/docs');
+    } else {
+      setCurrentPage(item.id);
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const NavContent = () => (
+    <>
       <div className="flex items-center gap-3 mb-10 px-2">
         <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
           <Leaf className="w-4 h-4 text-white" />
@@ -38,13 +48,7 @@ export default function Sidebar({ currentPage, setCurrentPage, navItems }: Sideb
         {navItems.map((item) => (
           <button 
             key={item.id} 
-            onClick={() => {
-              if (item.id === 'docs') {
-                router.push('/docs');
-              } else {
-                setCurrentPage(item.id);
-              }
-            }} 
+            onClick={() => handleNavClick(item)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
               currentPage === item.id 
                 ? 'bg-slate-900 text-white shadow-lg' 
@@ -79,7 +83,44 @@ export default function Sidebar({ currentPage, setCurrentPage, navItems }: Sideb
           <span className="font-bold text-xs tracking-widest uppercase">Sign Out</span>
         </button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-slate-200"
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? (
+          <X className="w-6 h-6 text-slate-900" />
+        ) : (
+          <Menu className="w-6 h-6 text-slate-900" />
+        )}
+      </button>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="w-64 bg-white border-r border-slate-100 min-h-screen p-6 flex flex-col fixed left-0 top-0 h-full z-10 hidden md:flex">
+        <NavContent />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <div className={`md:hidden fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-100 p-6 flex flex-col z-40 transform transition-transform duration-300 ease-in-out ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <NavContent />
+      </div>
+    </>
   );
 }
 

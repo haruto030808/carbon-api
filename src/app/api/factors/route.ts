@@ -45,12 +45,20 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json(joinedData);
+    // カテゴリと係数の両方を返す（カテゴリは全て、係数に関連付けられていないものも含む）
+    console.log(`Factors API: Found ${categories?.length || 0} categories and ${joinedData?.length || 0} factors`);
+    return NextResponse.json({
+      factors: joinedData || [],
+      categories: categories || []
+    });
 
   } catch (err: any) {
     console.error("Factors API Critical Error:", err);
-    // エラー時でもフロントが落ちないように空配列を返す手もありますが、
-    // 今回はデバッグ用にエラーを返します（フロント側でガード済み）
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // エラー時でもフロントが落ちないように空配列を返す
+    return NextResponse.json({ 
+      factors: [],
+      categories: [],
+      error: err.message 
+    }, { status: 500 });
   }
 }

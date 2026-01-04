@@ -83,37 +83,55 @@ export default function CarbonDashboard() {
         ]);
 
         const analyticsData = await resAnalytics.json();
-        const factorsData = await resFactors.json();
-
-        setSummary(analyticsData.summary);
-        setMonthly(analyticsData.monthly);
-        setActivities(analyticsData.history);
-        setPagination(analyticsData.pagination);
         
-        // --- 修正箇所: カテゴリ生成ロジックの安全性強化 ---
-        if (Array.isArray(factorsData)) {
-          setAllFactors(factorsData);
-          
-          const uniqueCategories = new Map();
-          factorsData.forEach((f: any) => {
-            // emission_categories が null の場合はスキップ
-            const cat = f.emission_categories;
-            if (cat && cat.id && !uniqueCategories.has(cat.id)) {
-              uniqueCategories.set(cat.id, cat);
-            }
-          });
-          
-          // 名前順にソートしてセット
-          const sortedCats = Array.from(uniqueCategories.values()).sort((a: any, b: any) => 
-            a.name.localeCompare(b.name)
-          );
-          setCategories(sortedCats);
-        } else {
-          console.error("Factors API returned unexpected format:", factorsData);
+        // Factors APIのレスポンスを確認
+        if (!resFactors.ok) {
+          const errorText = await resFactors.text();
+          console.error("Factors API error:", resFactors.status, errorText);
           setAllFactors([]);
           setCategories([]);
+        } else {
+          const factorsData = await resFactors.json();
+          console.log("Factors API response:", factorsData); // デバッグ用
+          
+          setSummary(analyticsData.summary);
+          setMonthly(analyticsData.monthly);
+          setActivities(analyticsData.history || []);
+          setPagination(analyticsData.pagination);
+          
+          // --- 修正箇所: カテゴリと係数を分離して取得 ---
+          if (factorsData && typeof factorsData === 'object' && 'factors' in factorsData && 'categories' in factorsData) {
+            // 新しい形式: { factors: [...], categories: [...] }
+            const factorsArray = Array.isArray(factorsData.factors) ? factorsData.factors : [];
+            const categoriesArray = Array.isArray(factorsData.categories) ? factorsData.categories : [];
+            console.log("Using new format - categories count:", categoriesArray.length, "factors count:", factorsArray.length);
+            console.log("Categories:", categoriesArray.map((c: any) => ({ id: c.id, name: c.name })));
+            setAllFactors(factorsArray);
+            setCategories(categoriesArray);
+          } else if (Array.isArray(factorsData)) {
+            // 旧形式（後方互換性のため）: 係数からカテゴリを抽出
+            console.log("Using old format - factors count:", factorsData.length);
+            setAllFactors(factorsData);
+            
+            const uniqueCategories = new Map();
+            factorsData.forEach((f: any) => {
+              const cat = f.emission_categories;
+              if (cat && cat.id && !uniqueCategories.has(cat.id)) {
+                uniqueCategories.set(cat.id, cat);
+              }
+            });
+            
+            const sortedCats = Array.from(uniqueCategories.values()).sort((a: any, b: any) => 
+              a.name.localeCompare(b.name)
+            );
+            setCategories(sortedCats);
+          } else {
+            console.error("Factors API returned unexpected format:", factorsData);
+            setAllFactors([]);
+            setCategories([]);
+          }
+          // ------------------------------------------------
         }
-        // ------------------------------------------------
       }
     } catch (e) {
       console.error("Fetch error:", e);
@@ -212,7 +230,7 @@ export default function CarbonDashboard() {
   return (
     <div className="flex min-h-screen bg-[#F8F9FA] text-slate-900 font-sans antialiased">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} navItems={navItems} />
-      <main className="flex-1 p-8 md:p-12 md:ml-64 w-full max-w-[1600px] mx-auto">
+      <main className="flex-1 p-8 md:p-12 md:ml-64 pt-16 md:pt-8 w-full max-w-[1600px] mx-auto">
         <header className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-slate-900">
