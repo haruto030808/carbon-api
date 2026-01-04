@@ -66,7 +66,30 @@ GitHub Actionsを使用する場合は、GitHubリポジトリのSecretsに以�
 - `https://carbon-api-app.pages.dev`
 - または、カスタムドメインを設定している場合はそのドメイン
 
+## デプロイが更新されない場合
+
+### 手動で再デプロイする方法
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/) にログイン
+2. **Workers & Pages** → **Pages** に移動
+3. プロジェクト `carbon-api-app` を選択
+4. **Settings** → **Builds & deployments** セクションに移動
+5. **Trigger new deployment** をクリック
+6. ブランチ `main` を選択してデプロイを開始
+
+または、**Deployments** タブから：
+1. 最新のデプロイメントの右側にある **⋮** (三点メニュー) をクリック
+2. **Retry deployment** を選択
+
+### ビルドログの確認方法
+
+1. **Deployments** タブで最新のデプロイメントを選択
+2. **Build logs** を開いてエラーを確認
+3. エラーがあれば修正して再デプロイ
+
 ## トラブルシューティング
+
+詳細は `TROUBLESHOOTING.md` を参照してください。
 
 ### ビルドエラーが発生する場合
 - Node.jsのバージョンが20であることを確認
@@ -76,4 +99,9 @@ GitHub Actionsを使用する場合は、GitHubリポジトリのSecretsに以�
 ### 認証が動作しない場合
 - SupabaseのリダイレクトURLが本番環境のURLに設定されていることを確認
 - OAuthプロバイダー（GitHub/Google）のコールバックURLがSupabaseのURLに設定されていることを確認
+
+### `/auth/callback` にアクセスできない場合
+- デプロイが完了しているか確認
+- ビルドログで `/auth/callback` が含まれているか確認
+- 最新のコードがプッシュされているか確認（`git push origin main`）
 
