@@ -98,9 +98,13 @@ export default function DataEntryForm({
                 className="w-full px-4 py-3 rounded-2xl bg-slate-50 border-none font-bold text-sm cursor-pointer hover:bg-slate-100 transition-colors appearance-none"
               >
                 <option value="">Select Category...</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {Array.isArray(categories) && categories.length > 0 ? (
+                  categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))
+                ) : (
+                  <option value="" disabled>No categories available</option>
+                )}
               </select>
               {currentCategory && (
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">

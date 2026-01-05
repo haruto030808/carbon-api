@@ -85,52 +85,63 @@ export default function CarbonDashboard() {
         const analyticsData = await resAnalytics.json();
         
         // Factors APIのレスポンスを確認
-        if (!resFactors.ok) {
-          const errorText = await resFactors.text();
-          console.error("Factors API error:", resFactors.status, errorText);
-          setAllFactors([]);
-          setCategories([]);
-        } else {
-          const factorsData = await resFactors.json();
-          console.log("Factors API response:", factorsData); // デバッグ用
-          
-          setSummary(analyticsData.summary);
-          setMonthly(analyticsData.monthly);
-          setActivities(analyticsData.history || []);
-          setPagination(analyticsData.pagination);
-          
-          // --- 修正箇所: カテゴリと係数を分離して取得 ---
-          if (factorsData && typeof factorsData === 'object' && 'factors' in factorsData && 'categories' in factorsData) {
-            // 新しい形式: { factors: [...], categories: [...] }
-            const factorsArray = Array.isArray(factorsData.factors) ? factorsData.factors : [];
-            const categoriesArray = Array.isArray(factorsData.categories) ? factorsData.categories : [];
-            console.log("Using new format - categories count:", categoriesArray.length, "factors count:", factorsArray.length);
-            console.log("Categories:", categoriesArray.map((c: any) => ({ id: c.id, name: c.name })));
-            setAllFactors(factorsArray);
-            setCategories(categoriesArray);
-          } else if (Array.isArray(factorsData)) {
-            // 旧形式（後方互換性のため）: 係数からカテゴリを抽出
-            console.log("Using old format - factors count:", factorsData.length);
-            setAllFactors(factorsData);
-            
-            const uniqueCategories = new Map();
-            factorsData.forEach((f: any) => {
-              const cat = f.emission_categories;
-              if (cat && cat.id && !uniqueCategories.has(cat.id)) {
-                uniqueCategories.set(cat.id, cat);
-              }
-            });
-            
-            const sortedCats = Array.from(uniqueCategories.values()).sort((a: any, b: any) => 
-              a.name.localeCompare(b.name)
-            );
-            setCategories(sortedCats);
-          } else {
-            console.error("Factors API returned unexpected format:", factorsData);
+        setSummary(analyticsData.summary);
+        setMonthly(analyticsData.monthly);
+        setActivities(analyticsData.history || []);
+        setPagination(analyticsData.pagination);
+        
+        try {
+          if (!resFactors.ok) {
+            console.error("Factors API returned error status:", resFactors.status);
             setAllFactors([]);
             setCategories([]);
+          } else {
+            const factorsData = await resFactors.json();
+            console.log("Factors API response:", factorsData); // デバッグ用
+            console.log("Factors API response type:", typeof factorsData, "has factors:", 'factors' in factorsData, "has categories:", 'categories' in factorsData);
+            
+            // --- 修正箇所: カテゴリと係数を分離して取得 ---
+            if (factorsData && typeof factorsData === 'object' && 'factors' in factorsData && 'categories' in factorsData) {
+              // 新しい形式: { factors: [...], categories: [...] }
+              const factorsArray = Array.isArray(factorsData.factors) ? factorsData.factors : [];
+              const categoriesArray = Array.isArray(factorsData.categories) ? factorsData.categories : [];
+              console.log("Using new format - categories count:", categoriesArray.length, "factors count:", factorsArray.length);
+              if (categoriesArray.length > 0) {
+                console.log("Categories:", categoriesArray.map((c: any) => ({ id: c.id, name: c.name })));
+              } else {
+                console.warn("Categories array is empty!");
+              }
+              setAllFactors(factorsArray);
+              setCategories(categoriesArray);
+            } else if (Array.isArray(factorsData)) {
+              // 旧形式（後方互換性のため）: 係数からカテゴリを抽出
+              console.log("Using old format - factors count:", factorsData.length);
+              setAllFactors(factorsData);
+              
+              const uniqueCategories = new Map();
+              factorsData.forEach((f: any) => {
+                const cat = f.emission_categories;
+                if (cat && cat.id && !uniqueCategories.has(cat.id)) {
+                  uniqueCategories.set(cat.id, cat);
+                }
+              });
+              
+              const sortedCats = Array.from(uniqueCategories.values()).sort((a: any, b: any) => 
+                a.name.localeCompare(b.name)
+              );
+              console.log("Extracted categories count:", sortedCats.length);
+              setCategories(sortedCats);
+            } else {
+              console.error("Factors API returned unexpected format:", factorsData);
+              setAllFactors([]);
+              setCategories([]);
+            }
+            // ------------------------------------------------
           }
-          // ------------------------------------------------
+        } catch (factorsError) {
+          console.error("Factors API error:", resFactors.status, factorsError);
+          setAllFactors([]);
+          setCategories([]);
         }
       }
     } catch (e) {
