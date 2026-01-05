@@ -9,8 +9,8 @@ export async function POST(request: Request) {
   try {
     // 1. Supabaseクライアントの初期化 (環境変数から直接生成)
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
     );
 
     const { name, org_id } = await request.json();
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     // 2. 認証チェック (Cookieからセッションを確認)
     const cookieStore = await cookies();
     // Supabaseのセッションクッキー名を動的に取得（プロジェクト参照をURLから抽出）
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
     const projectRef = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
     
     // セッションクッキーを取得（複数のクッキー名を試行）

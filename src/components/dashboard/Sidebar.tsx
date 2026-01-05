@@ -21,7 +21,10 @@ export default function Sidebar({ currentPage, setCurrentPage, navItems }: Sideb
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+  );
   
   useEffect(() => { 
     supabase.auth.getUser().then(({ data }) => setUser(data.user)); 
