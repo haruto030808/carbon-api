@@ -8,7 +8,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const cookieStore = await cookies();
 
-    // 1. セッション認証（ブラウザでログインしている本人か確認）
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "",
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
@@ -26,29 +25,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 組織IDをメタデータから取得（さきほどSQLで設定した 0000... を使います）
     const orgId = user.user_metadata?.org_id;
     if (!orgId) {
-      return NextResponse.json({ error: 'Organization ID not found in metadata' }, { status: 403 });
+      return NextResponse.json({ error: 'Organization ID not found' }, { status: 403 });
     }
 
-    // 3. APIキーの生成（ランダムな文字列を作成）
-    const apiKey = `sk_${crypto.randomUUID().replace(/-/g, '')}`;
+    // 1. APIキーの生成 (sk_live_ 形式に修正)
+    const apiKey = `sk_live_${crypto.randomUUID().replace(/-/g, '')}`;
     
-    // 4. ハッシュ化（DB保存用。生キーは保存せずハッシュのみ保存する安全な設計）
+    // 2. ハッシュ化
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(apiKey));
     const hashedKey = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // 5. データベースに保存
-    // 注意：以前のエラーで user_id カラムがないことが分かったので、org_id と hashed_key のみ保存します
+    // 3. データベースに保存 (key_prefix を sk_live に修正)
     const { error: insertError } = await supabase
       .from('api_keys')
       .insert({
         org_id: orgId,
         hashed_key: hashedKey,
+        key_prefix: 'sk_live', // ← ここを sk_live に合わせました
         name: body.name || 'Production Key',
       });
 
@@ -57,7 +55,6 @@ export async function POST(request: Request) {
       throw insertError;
     }
 
-    // 6. 生のAPIキーを一度だけ表示するために返す
     return NextResponse.json({ apiKey });
 
   } catch (err: any) {
