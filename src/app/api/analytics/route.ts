@@ -2,17 +2,13 @@ export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // Supabaseクライアントの初期化
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
-    );
-
     const { searchParams } = new URL(request.url);
     const apiKey = request.headers.get('x-api-key');
 
@@ -28,22 +24,104 @@ export async function GET(request: Request) {
     const sortOrder = searchParams.get('sort_order') || 'desc'; // 'asc' or 'desc'
     const sortBy = searchParams.get('sort_by') || 'start_date'; // 'start_date' or 'created_at'
 
-    if (!apiKey) return NextResponse.json({ error: 'APIキーが必要です' }, { status: 401 });
+    let orgId: string | null = null;
 
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(apiKey);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashedInputKey = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const { data: keyRecord } = await supabase
-      .from('api_keys').select('org_id').eq('hashed_key', hashedInputKey).single();
+    // 1. APIキー認証のチェック
+    if (apiKey) {
+      // Supabaseクライアントの初期化（APIキー認証用）
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+      );
 
-    if (!keyRecord) return NextResponse.json({ error: '無効なAPIキー' }, { status: 403 });
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(apiKey);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', keyData);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashedInputKey = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const { data: keyRecord } = await supabase
+        .from('api_keys').select('org_id').eq('hashed_key', hashedInputKey).single();
+
+      if (!keyRecord) {
+        return NextResponse.json({ error: '無効なAPIキー' }, { status: 403 });
+      }
+
+      orgId = keyRecord.org_id;
+    } else {
+      // 2. セッション認証のチェック（APIキーがない場合）
+      const cookieStore = await cookies();
+      
+      const supabaseServer = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key",
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
+            set(name: string, value: string, options: CookieOptions) {
+              cookieStore.set({ name, value, ...options })
+            },
+            remove(name: string, options: CookieOptions) {
+              cookieStore.delete({ name, ...options })
+            },
+          },
+        }
+      );
+
+      // ユーザー認証チェック
+      const { data: { user }, error: authError } = await supabaseServer.auth.getUser();
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      // ユーザーの org_id を取得（api_keys テーブルから）
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+      );
+
+      const { data: userKeyRecord } = await supabase
+        .from('api_keys')
+        .select('org_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (!userKeyRecord) {
+        // api_keys テーブルにレコードがない場合、profiles テーブルを確認
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('org_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile || !profile.org_id) {
+          return NextResponse.json({ error: 'Organization not found for user' }, { status: 403 });
+        }
+
+        orgId = profile.org_id;
+      } else {
+        orgId = userKeyRecord.org_id;
+      }
+    }
+
+    // org_id が取得できなかった場合のエラーチェック
+    if (!orgId) {
+      return NextResponse.json({ error: 'Organization ID could not be determined' }, { status: 403 });
+    }
+
+    // 3. データ取得（org_id を使って既存のロジックを実行）
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+    );
 
     let query = supabase
       .from('activity_entries')
       .select(`*, emission_factors (name, unit, scope_type)`)
-      .eq('org_id', keyRecord.org_id);
+      .eq('org_id', orgId);
 
     if (startDate) query = query.gte('start_date', startDate);
     if (endDate) query = query.lte('end_date', endDate);

@@ -85,13 +85,13 @@ export default function ActivityTable({
                     {item.created_at ? item.created_at.substring(0, 10) : '-'}
                   </td>
                   <td className="px-8 py-6 text-sm font-black text-slate-900">
-                    {item.start_date.substring(0, 7)}
+                    {item.start_date ? item.start_date.substring(0, 7) : '-'}
                   </td>
                   <td className="px-8 py-6 text-sm font-bold text-slate-700">
-                    {item.emission_factors?.name}
+                    {item.emission_factors?.name || '-'}
                   </td>
                   <td className="px-8 py-6 text-right font-black text-slate-900">
-                    {item.co2_emissions?.toFixed(1)} <span className="text-[10px] text-slate-500 font-bold ml-1">kg</span>
+                    {item.co2_emissions != null ? item.co2_emissions.toFixed(1) : '-'} <span className="text-[10px] text-slate-500 font-bold ml-1">kg</span>
                   </td>
                   <td className="px-8 py-6 text-right">
                     <button 
@@ -121,22 +121,22 @@ export default function ActivityTable({
         <div className="p-6 border-t border-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => handlePageChange(pagination.page - 1)} 
-              disabled={pagination.page <= 1} 
+              onClick={() => handlePageChange((pagination?.page ?? 1) - 1)} 
+              disabled={(pagination?.page ?? 1) <= 1} 
               className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
             >
               <ChevronLeft className="w-4 h-4 text-slate-600" />
             </button>
             <button 
-              onClick={() => handlePageChange(pagination.page + 1)} 
-              disabled={pagination.page >= pagination.total_pages} 
+              onClick={() => handlePageChange((pagination?.page ?? 1) + 1)} 
+              disabled={(pagination?.page ?? 1) >= (pagination?.total_pages ?? 1)} 
               className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
             >
               <ChevronRight className="w-4 h-4 text-slate-600" />
             </button>
           </div>
           <span className="text-xs font-bold text-slate-400">
-            Page {pagination.page} of {pagination.total_pages}
+            Page {pagination?.page ?? 1} of {pagination?.total_pages ?? 1}
           </span>
         </div>
       </div>
