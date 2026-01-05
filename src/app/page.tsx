@@ -30,7 +30,7 @@ export default function CarbonDashboard() {
   const [monthly, setMonthly] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   
-  // マスタデータ管理 (2段階選択用)
+  // マスタデータ管理
   const [allFactors, setAllFactors] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   
@@ -64,7 +64,9 @@ export default function CarbonDashboard() {
   // --- データ取得 ---
   const loadData = async () => {
     setLoading(true);
-    const headers = { 'x-api-key': API_KEY };
+    // APIキーがない場合でもリクエストを送るように修正（バックエンド側でセッション認証するため）
+    const headers: HeadersInit = API_KEY ? { 'x-api-key': API_KEY } : {};
+    
     const params = new URLSearchParams();
     
     if (filterScope) params.append('scope', filterScope);
@@ -82,13 +84,15 @@ export default function CarbonDashboard() {
           fetch('/api/factors', { headers })
         ]);
 
-        const analyticsData = await resAnalytics.json();
-        
-        // Factors APIのレスポンスを確認
-        setSummary(analyticsData.summary);
-        setMonthly(analyticsData.monthly);
-        setActivities(analyticsData.history || []);
-        setPagination(analyticsData.pagination);
+        if (resAnalytics.ok) {
+            const analyticsData = await resAnalytics.json();
+            setSummary(analyticsData.summary);
+            setMonthly(analyticsData.monthly);
+            setActivities(analyticsData.history || []);
+            setPagination(analyticsData.pagination);
+        } else {
+            console.error("Analytics API Error:", resAnalytics.status);
+        }
         
         try {
           if (!resFactors.ok) {
@@ -97,27 +101,14 @@ export default function CarbonDashboard() {
             setCategories([]);
           } else {
             const factorsData = await resFactors.json();
-            console.log("Factors API response:", factorsData); // デバッグ用
-            console.log("Factors API response type:", typeof factorsData, "has factors:", 'factors' in factorsData, "has categories:", 'categories' in factorsData);
             
-            // --- 修正箇所: カテゴリと係数を分離して取得 ---
             if (factorsData && typeof factorsData === 'object' && 'factors' in factorsData && 'categories' in factorsData) {
-              // 新しい形式: { factors: [...], categories: [...] }
               const factorsArray = Array.isArray(factorsData.factors) ? factorsData.factors : [];
               const categoriesArray = Array.isArray(factorsData.categories) ? factorsData.categories : [];
-              console.log("Using new format - categories count:", categoriesArray.length, "factors count:", factorsArray.length);
-              if (categoriesArray.length > 0) {
-                console.log("Categories:", categoriesArray.map((c: any) => ({ id: c.id, name: c.name })));
-              } else {
-                console.warn("Categories array is empty!");
-              }
               setAllFactors(factorsArray);
               setCategories(categoriesArray);
             } else if (Array.isArray(factorsData)) {
-              // 旧形式（後方互換性のため）: 係数からカテゴリを抽出
-              console.log("Using old format - factors count:", factorsData.length);
               setAllFactors(factorsData);
-              
               const uniqueCategories = new Map();
               factorsData.forEach((f: any) => {
                 const cat = f.emission_categories;
@@ -125,21 +116,17 @@ export default function CarbonDashboard() {
                   uniqueCategories.set(cat.id, cat);
                 }
               });
-              
               const sortedCats = Array.from(uniqueCategories.values()).sort((a: any, b: any) => 
                 a.name.localeCompare(b.name)
               );
-              console.log("Extracted categories count:", sortedCats.length);
               setCategories(sortedCats);
             } else {
-              console.error("Factors API returned unexpected format:", factorsData);
               setAllFactors([]);
               setCategories([]);
             }
-            // ------------------------------------------------
           }
         } catch (factorsError) {
-          console.error("Factors API error:", resFactors.status, factorsError);
+          console.error("Factors API error:", factorsError);
           setAllFactors([]);
           setCategories([]);
         }
@@ -154,7 +141,6 @@ export default function CarbonDashboard() {
   useEffect(() => { loadData(); }, [currentPage, pagination?.page ?? 1, sortConfig]);
 
   // --- ロジック: カテゴリ選択時の連動 ---
-  
   const availableFactors = useMemo(() => {
     if (!selectedCategoryId || !Array.isArray(allFactors)) return [];
     return allFactors.filter(f => f.category_id === selectedCategoryId);
@@ -169,7 +155,6 @@ export default function CarbonDashboard() {
     if (!Array.isArray(allFactors)) return null;
     return allFactors.find(f => f.id === selectedFactorId);
   }, [selectedFactorId, allFactors]);
-
 
   const handleApplyFilter = () => {
     setPagination(p => ({ ...p, page: 1 }));
@@ -192,8 +177,11 @@ export default function CarbonDashboard() {
     if (!confirm("Are you sure?")) return;
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/entries?id=${id}`, { method: 'DELETE', headers: { 'x-api-key': API_KEY } });
-      if (res.ok) loadData();
+        // APIキーがなくても削除リクエストを送れるように headers を調整
+        const headers: HeadersInit = API_KEY ? { 'x-api-key': API_KEY } : {};
+        const res = await fetch(`/api/entries?id=${id}`, { method: 'DELETE', headers });
+        if (res.ok) loadData();
+        else alert("Deletion failed");
     } catch (e) { alert("Error"); }
     setDeletingId(null);
   };
@@ -202,9 +190,13 @@ export default function CarbonDashboard() {
     e.preventDefault();
     setIsCalculating(true);
     try {
+      // APIキーがなくても計算リクエストを送れるように headers を調整
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (API_KEY) headers['x-api-key'] = API_KEY;
+
       const res = await fetch('/api/calculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        headers,
         body: JSON.stringify({
           factor_id: selectedFactorId,
           activity_value: Number(activityValue),
@@ -216,6 +208,9 @@ export default function CarbonDashboard() {
         setActivityValue('');
         loadData();
         alert("Entry Added Successfully");
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.error || 'Failed to add entry'}`);
       }
     } catch (e) { console.error(e); }
     setIsCalculating(false);
